@@ -1,0 +1,9 @@
+services:
+  server:
+    build: ./server
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./server/src:/app/src
+    env_file:
+      - ./server/.env
