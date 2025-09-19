@@ -49,6 +49,8 @@ const deleteOtpData = async (registrationId: string): Promise<void> => {
   }
 };
 
+// server/src/controllers/authController.ts
+
 // API LOGIC 1: Start the registration process
 export const startRegistration = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -57,6 +59,12 @@ export const startRegistration = async (req: Request, res: Response): Promise<vo
     if (!email || !password || !username) {
       res.status(400).json({ message: 'Email, password, and username are required.' });
       return;
+    }
+
+    // --- NEW FIX: Add password length validation on the backend ---
+    if (password.trim().length < 6) {
+        res.status(400).json({ message: 'Password must be at least 6 characters long.' });
+        return;
     }
 
     const existingUser = await User.findOne({ 
@@ -71,10 +79,9 @@ export const startRegistration = async (req: Request, res: Response): Promise<vo
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const registrationId = uuidv4();
     
-    // --- FIX: Trim whitespace from password before hashing ---
-    const hashedPassword = await bcrypt.hash(password.trim(), 10);
-
-    const userData = { email: email.toLowerCase(), password: hashedPassword, username, otp };
+    // YOUR FIX: Store the trimmed, plain-text password in Redis.
+    const trimmedPassword = password.trim();
+    const userData = { email: email.toLowerCase(), password: trimmedPassword, username, otp };
 
     await storeOtpData(registrationId, userData);
     await sendOtpEmail(email, otp);

@@ -1,103 +1,115 @@
-import Image from "next/image";
+'use client';
+import { ArrowRight, BarChart, Bot, Swords, Users } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
+import { useSocket } from '@/hooks/useSocket';
+import { Button } from '@/components/Button';
 
-export default function Home() {
+const features = [
+  {
+    icon: <Swords className="h-10 w-10 text-yellow-400" />,
+    title: "Live 1v1 Matches",
+    description: "Experience the thrill of real-time racing against a live opponent. See their 'ghost' race alongside you as you type.",
+  },
+  {
+    icon: <Users className="h-10 w-10 text-yellow-400" />,
+    title: "Skill-Based Matchmaking",
+    description: "Our ELO rating system ensures you're always paired against opponents of a similar skill level for a fair and challenging match.",
+  },
+  {
+    icon: <Bot className="h-10 w-10 text-yellow-400" />,
+    title: "Practice Against Bots",
+    description: "Hone your skills against a variety of AI opponents. Choose a difficulty level that matches your WPM to prepare for live competition.",
+  },
+  {
+    icon: <BarChart className="h-10 w-10 text-yellow-400" />,
+    title: "Detailed Analytics",
+    description: "Track your progress over time. Monitor your WPM, accuracy, consistency, and match history to identify your strengths.",
+  },
+];
+
+export default function HomePage() {
+  const { isLoggedIn } = useAuthStore();
+  const { socket } = useSocket();
+  const [matchmakingStatus, setMatchmakingStatus] = useState<'idle' | 'searching'>('idle');
+  const router = useRouter();
+
+  // --- NEW: Handle Find Match ---
+
+  const handleFindMatch = () => {
+    if (socket) {
+      setMatchmakingStatus('searching');
+      // cast to any so TS won't complain about missing typings here
+      const s = socket as any;
+      s.emit('findMatch');
+
+      s.once('matchFound', (data: any) => {
+        console.log('Match Found!', data);
+        alert(`Match Found! Opponent: ${data.opponent?.username ?? 'unknown'} (Rating: ${data.opponent?.rating ?? 'n/a'})`);
+        setMatchmakingStatus('idle');
+      });
+    } else {
+      alert('You must be logged in to find a match!');
+    }
+  };
+
+  useEffect(() => {
+    if (socket) {
+        socket.on('matchFound', (data) => {
+            console.log('Match Found! Navigating to game...', data);
+            // Navigate to the dynamic game page with the match ID
+            router.push(`/game/${data.matchId}`);
+        });
+
+        // Clean up the event listener when the component unmounts
+        return () => {
+            socket.off('matchFound');
+        };
+    }
+  }, [socket, router]);
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <>
+      <div className="flex flex-col items-center justify-center text-center min-h-[calc(100vh-10rem)]">
+        <h1 className="text-5xl md:text-7xl font-extrabold text-white">
+          Welcome to <span className="text-yellow-400">Typo</span>
+        </h1>
+        <p className="mt-4 max-w-2xl text-lg md:text-xl text-gray-400">
+          The ultimate typing arena where speed and accuracy make you a champion.
+          Challenge friends, climb the ranks, and become a keyboard legend.
+        </p>
+        <div className="mt-8 flex flex-wrap justify-center gap-4">
+        {isLoggedIn ? (
+          <Button onClick={handleFindMatch} size="lg" disabled={matchmakingStatus === 'searching'}>
+            {matchmakingStatus === 'searching' ? 'Searching...' : 'Find a Match'}
+            <ArrowRight size={20} className="ml-2" />
+          </Button>
+        ) : (
+            <p className="text-yellow-400">Please Sign In or Sign Up to play!</p>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        <section className="py-16 sm:py-20">
+          <div className="container mx-auto px-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-center text-white mb-12">
+              Features Built for <span className="text-yellow-400">Competition</span>
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {features.map((feature, index) => (
+                <div
+                  key={index}
+                  className="bg-slate-900/50 p-6 rounded-lg border border-slate-700/50 flex flex-col items-center text-center transition-transform hover:-translate-y-2"
+                >
+                  <div className="mb-4">{feature.icon}</div>
+                  <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
+                  <p className="text-slate-400">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+    </>
   );
 }
