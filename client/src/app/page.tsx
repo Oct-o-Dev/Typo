@@ -46,7 +46,7 @@ export default function HomePage() {
 
       s.once('matchFound', (data: any) => {
         console.log('Match Found!', data);
-        alert(`Match Found! Opponent: ${data.opponent?.username ?? 'unknown'} (Rating: ${data.opponent?.rating ?? 'n/a'})`);
+        // alert(`Match Found! Opponent: ${data.opponent?.username ?? 'unknown'} (Rating: ${data.opponent?.rating ?? 'n/a'})`);
         setMatchmakingStatus('idle');
       });
     } else {

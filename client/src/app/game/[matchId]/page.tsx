@@ -13,9 +13,15 @@ interface Opponent {
   rating: number;
 }
 
+interface GameMode {
+  mode: 'time' | 'words';
+  duration: number;
+}
+
 interface MatchData {
   text: string;
   opponent: Opponent;
+  gameMode: GameMode;
 }
 
 export default function GamePage() {
@@ -32,9 +38,7 @@ export default function GamePage() {
             console.log(`Socket connected. Requesting data for match: ${matchId}`);
             socket.emit('getMatchData', { matchId });
 
-            // Define the handler for the server's response
-            const handleMatchDataResponse = (data: { opponent: Opponent, text: string }) => {
-                console.log('Received match data from server:', data);
+            const handleMatchDataResponse = (data: { opponent: Opponent, text: string, gameMode: GameMode }) => { // Add gameMode
                 setMatchData(data);
                 setError(null);
             };
@@ -74,6 +78,7 @@ export default function GamePage() {
             matchId={matchId} 
             initialText={matchData.text} 
             initialOpponent={matchData.opponent}
+            gameMode={matchData.gameMode} // Pass the game mode down
         />
     );
 }
