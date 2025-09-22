@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { useSocket } from '@/hooks/useSocket';
 import { Button } from '@/components/Button';
+import GameSettings, { GameMode, GameSetting } from '@/components/GameSettings';
 
 const features = [
   {
@@ -35,21 +36,17 @@ export default function HomePage() {
   const [matchmakingStatus, setMatchmakingStatus] = useState<'idle' | 'searching'>('idle');
   const router = useRouter();
 
-  // --- NEW: Handle Find Match ---
+  // --- NEW: State for game settings ---
+  const [gameMode, setGameMode] = useState<GameMode>('time');
+  const [gameSetting, setGameSetting] = useState<GameSetting<'time'> | GameSetting<'words'>>(30);
 
   const handleFindMatch = () => {
     if (socket) {
       setMatchmakingStatus('searching');
-      // cast to any so TS won't complain about missing typings here
-      const s = socket as any;
-      s.emit('findMatch');
-
-      s.once('matchFound', (data: any) => {
-        console.log('Match Found!', data);
-        // alert(`Match Found! Opponent: ${data.opponent?.username ?? 'unknown'} (Rating: ${data.opponent?.rating ?? 'n/a'})`);
-        setMatchmakingStatus('idle');
-      });
+      // --- NEW: Send the selected settings to the server ---
+      socket.emit('findMatch', { gameMode, gameSetting });
     } else {
+      // In a real app, we might want to show the login modal here
       alert('You must be logged in to find a match!');
     }
   };
@@ -57,12 +54,9 @@ export default function HomePage() {
   useEffect(() => {
     if (socket) {
         socket.on('matchFound', (data) => {
-            console.log('Match Found! Navigating to game...', data);
-            // Navigate to the dynamic game page with the match ID
             router.push(`/game/${data.matchId}`);
         });
 
-        // Clean up the event listener when the component unmounts
         return () => {
             socket.off('matchFound');
         };
@@ -71,24 +65,36 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="flex flex-col items-center justify-center text-center min-h-[calc(100vh-10rem)]">
+    <div className="flex flex-col items-center justify-center text-center min-h-[calc(100vh-10rem)]">
+      <div className="w-full max-w-4xl">
         <h1 className="text-5xl md:text-7xl font-extrabold text-white">
           Welcome to <span className="text-yellow-400">Typo</span>
         </h1>
-        <p className="mt-4 max-w-2xl text-lg md:text-xl text-gray-400">
+        <p className="mt-4 max-w-2xl mx-auto text-lg md:text-xl text-gray-400">
           The ultimate typing arena where speed and accuracy make you a champion.
-          Challenge friends, climb the ranks, and become a keyboard legend.
         </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-4">
-        {isLoggedIn ? (
-          <Button onClick={handleFindMatch} size="lg" disabled={matchmakingStatus === 'searching'}>
-            {matchmakingStatus === 'searching' ? 'Searching...' : 'Find a Match'}
-            <ArrowRight size={20} className="ml-2" />
-          </Button>
-        ) : (
+        
+        {/* --- NEW: Add the GameSettings component here --- */}
+        <div className="mt-12 mb-8 flex justify-center">
+            <GameSettings 
+                gameMode={gameMode}
+                setGameMode={setGameMode}
+                gameSetting={gameSetting}
+                setGameSetting={setGameSetting}
+            />
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-4">
+          {isLoggedIn ? (
+            <Button onClick={handleFindMatch} size="lg" disabled={matchmakingStatus === 'searching'}>
+              {matchmakingStatus === 'searching' ? 'Searching...' : 'Find a Match'}
+              <ArrowRight size={20} className="ml-2" />
+            </Button>
+          ) : (
             <p className="text-yellow-400">Please Sign In or Sign Up to play!</p>
           )}
         </div>
+      </div>
 
         <section className="py-16 sm:py-20">
           <div className="container mx-auto px-4">

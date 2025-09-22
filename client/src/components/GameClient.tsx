@@ -5,6 +5,16 @@ import { useSocket } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/authStore';
 import ResultsModal from './ResultsModal';
 import { useRouter } from 'next/navigation';
+import { Howl } from 'howler'; // Import Howler for sound effects
+
+// --- NEW: Sound Effect Definitions ---
+const keySound = new Howl({
+  src: ['https://actions.google.com/sounds/v1/ui/key_press_standard.ogg']
+});
+const errorSound = new Howl({
+  src: ['https://actions.google.com/sounds/v1/ui/error_light.ogg'],
+  volume: 0.5
+});
 
 // ... (Interfaces are correct and remain the same)
 interface Opponent { id: string; username: string; rating: number; }
@@ -30,6 +40,9 @@ export default function GameClient({ matchId, initialText, initialOpponent, game
 
   const startTime = useRef<number | null>(null);
   const [wpm, setWpm] = useState(0);
+
+  // --- NEW: State for visual error feedback ---
+  const [isError, setIsError] = useState(false);
 
   // --- THE DEFINITIVE FIX: Calculate final stats inside this function ---
   const finishGame = useCallback(() => {
@@ -60,25 +73,50 @@ export default function GameClient({ matchId, initialText, initialOpponent, game
   }, [isLoggedIn]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    // ... (This function is now perfect and remains the same)
     if (gameState !== 'running' || isFinished) return;
-    if (userInput.length >= textToType.length) {
-        finishGame();
-        return;
+    
+    // --- UPDATED to handle finishing a "words" match ---
+    // We check if the NEXT character they type will finish the text
+    if (userInput.length === textToType.length - 2 && e.key.length === 1) {
+        if (gameMode.mode === 'words') {
+            // A tiny delay ensures the last character is registered before finishing
+            setTimeout(() => finishGame(), 50);
+        }
     }
+    
+    if (userInput.length >= textToType.length) return;
+    
     if (e.key.length === 1 || e.key === 'Backspace') e.preventDefault();
+    
     if (!startTime.current && e.key.length === 1) {
       startTime.current = Date.now();
       if (socket) socket.emit('playerStartedTyping', matchId);
     }
-    if (e.key.length === 1) setUserInput((prev) => prev + e.key);
-    else if (e.key === 'Backspace') setUserInput((prev) => prev.slice(0, -1));
-  }, [userInput.length, textToType.length, isFinished, gameState, finishGame, socket, matchId]);
 
+    if (e.key.length === 1) {
+      const typedChar = e.key;
+      const expectedChar = textToType[userInput.length];
+      if (typedChar === expectedChar) {
+        keySound.play();
+        setIsError(false);
+      } else {
+        errorSound.play();
+        setIsError(true);
+        setTimeout(() => setIsError(false), 200);
+      }
+      setUserInput((prev) => prev + typedChar);
+    } else if (e.key === 'Backspace') {
+      setIsError(false);
+      setUserInput((prev) => prev.slice(0, -1));
+    }
+  }, [userInput, textToType, gameState, isFinished, socket, matchId, finishGame, gameMode.mode]);
+
+  
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
 
   // Main WebSocket listener setup
   useEffect(() => {
@@ -159,6 +197,9 @@ export default function GameClient({ matchId, initialText, initialOpponent, game
 
   return (
     <>
+    {/* --- NEW: Add a conditional class for the error shake --- */}
+      <div className={`flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] relative ${isError ? 'animate-shake' : ''}`}>
+        
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] relative">
         
         {/* --- Countdown Overlay --- */}
@@ -196,6 +237,12 @@ export default function GameClient({ matchId, initialText, initialOpponent, game
                 </div>
             </div>
 
+            {isFinished && !results && (
+                <div className="mt-6 text-center text-yellow-400 font-semibold animate-pulse">
+                    Waiting for opponent...
+                </div>
+            )}
+
             <div className="mt-6 px-2 space-y-3">
                 <div className="w-full bg-gray-800 rounded-full h-2.5">
                     <div className="bg-yellow-400 h-2.5 rounded-full" style={{ width: `${myProgress}%` }} />
@@ -205,6 +252,7 @@ export default function GameClient({ matchId, initialText, initialOpponent, game
                 </div>
             </div>
         </div>
+      </div>
       </div>
       
       <ResultsModal isOpen={!!results} results={results!} />
