@@ -1,13 +1,13 @@
 import axios from 'axios';
 
-// Create an axios instance with a base URL for our backend
+// Use the Vercel environment variable in production, fall back to localhost for development
+const baseURL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5001';
+
 const api = axios.create({
-  baseURL: 'http://localhost:5001/api', // The base URL of our Express server
+  baseURL: `${baseURL}/api`, // Make sure to add /api
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
-// We can add interceptors here later to automatically add the JWT token to every request
 
 export default api;

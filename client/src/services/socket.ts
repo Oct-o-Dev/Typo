@@ -1,10 +1,10 @@
 // client/src/services/socket.ts
 import { io, Socket } from 'socket.io-client';
 
-// FIX: Allow the socket to be undefined
 let socket: Socket | undefined;
 
-const SERVER_URL = 'http://localhost:5001';
+// Use the Vercel environment variable in production, fall back to localhost for development
+const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5001';
 
 export const connectSocket = (token: string) => {
   if (socket) return socket;
