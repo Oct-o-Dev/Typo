@@ -1,18 +1,19 @@
+// server/src/config/redisClient.ts
 import { createClient } from 'redis';
 
-const redisClient = createClient({
-  socket: {
-    // THE CHANGE IS HERE: We add a fallback to 'localhost'.
-    // This allows the code to connect properly when running inside Docker
-    // by using the REDIS_HOST from docker-compose, while still working
-    // normally if you run it outside of Docker.
-    host: process.env.REDIS_HOST || 'localhost',
-    port: Number(process.env.REDIS_PORT),
-  },
-});
+// This is now production-ready. It uses the URL if provided, otherwise falls back.
+const redisClient = process.env.REDIS_URL 
+  ? createClient({ url: process.env.REDIS_URL })
+  : createClient({
+      socket: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: Number(process.env.REDIS_PORT) || 6379,
+      },
+    });
 
 redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
+// This function will now only be called if we are not in production without a Redis URL
 export const connectRedis = async () => {
   if (!redisClient.isOpen) {
     await redisClient.connect();
@@ -21,4 +22,3 @@ export const connectRedis = async () => {
 };
 
 export default redisClient;
-
