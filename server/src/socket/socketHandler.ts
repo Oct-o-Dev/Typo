@@ -54,7 +54,9 @@ const calculateAndEmitResults = async (io: Server, matchId: string) => {
 
 export const initSocket = (httpServer: HttpServer, corsOptions: CorsOptions) => {
   const io = new Server(httpServer, {
-    cors: corsOptions
+    cors: corsOptions,
+    // --- THE FINAL FIX: Prioritize WebSockets for production reliability ---
+    transports: ['websocket', 'polling'], 
   });
 
   io.use(async (socket, next) => {

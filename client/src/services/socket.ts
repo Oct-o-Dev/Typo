@@ -13,10 +13,12 @@ export const connectSocket = (token: string) => {
     auth: {
       token,
     },
+    // --- THE FINAL FIX: Tell the client to use WebSockets first ---
+    transports: ['websocket', 'polling'],
   });
 
   socket.on('connect', () => {
-    console.log('✅ Connected to WebSocket server');
+    console.log('✅ Connected to WebSocket server via', socket!.io.engine.transport.name);
   });
 
   socket.on('disconnect', () => {
@@ -34,7 +36,6 @@ export const getSocket = () => {
 export const disconnectSocket = () => {
   if (socket) {
     socket.disconnect();
-    // FIX: A type-safe way to clear the variable
     socket = undefined;
   }
 };
