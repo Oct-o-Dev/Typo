@@ -16,7 +16,6 @@ const allowedOrigins = [
   process.env.CLIENT_URL,
 ];
 
-// The type is correctly defined here
 const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
@@ -24,7 +23,9 @@ const corsOptions: CorsOptions = {
     } else {
       callback(new Error('Not allowed by CORS'));
     }
-  }
+  },
+  // --- THIS IS CRUCIAL for the cookie fix to work ---
+  credentials: true
 };
 
 initSocket(server, corsOptions);

@@ -55,8 +55,15 @@ const calculateAndEmitResults = async (io: Server, matchId: string) => {
 export const initSocket = (httpServer: HttpServer, corsOptions: CorsOptions) => {
   const io = new Server(httpServer, {
     cors: corsOptions,
-    // --- THE FINAL FIX: Prioritize WebSockets for production reliability ---
-    transports: ['websocket', 'polling'], 
+    // --- THE FINAL, DEFINITIVE FIX ---
+    // This tells Socket.IO how to handle cookies for session affinity
+    // in a secure, cross-domain production environment.
+    cookie: {
+      name: "typo-socket",
+      httpOnly: true,
+      sameSite: "none",
+      secure: true
+    }
   });
 
   io.use(async (socket, next) => {
