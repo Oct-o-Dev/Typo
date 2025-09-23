@@ -7,6 +7,7 @@ import User from '../models/User';
 import Match from '../models/Match';
 import { generateRandomWords } from '../config/wordlist';
 import { calculateNewRatings } from '../services/eloService';
+import { CorsOptions } from 'cors';
 
 interface FindMatchPayload { gameMode: 'time' | 'words'; gameSetting: number; }
 
@@ -49,8 +50,12 @@ const calculateAndEmitResults = async (io: Server, matchId: string) => {
     activeTimers.delete(`abort_${matchId}`);
 };
 
-export const initSocket = (httpServer: HttpServer) => {
-  const io = new Server(httpServer, { cors: { origin: "http://localhost:3000", methods: ["GET", "POST"] } });
+
+
+export const initSocket = (httpServer: HttpServer, corsOptions: CorsOptions) => {
+  const io = new Server(httpServer, {
+    cors: corsOptions
+  });
 
   io.use(async (socket, next) => {
     const token = socket.handshake.auth.token;

@@ -1,36 +1,45 @@
 // server/src/index.ts
 import './config/loadEnv';
 import express from 'express';
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors'; // Ensure CorsOptions is imported here too
 import http from 'http';
 import { initSocket } from './socket/socketHandler';
 import connectDB from './config/db';
-import { connectRedis } from './config/redisClient'; // We still import it
+import { connectRedis } from './config/redisClient';
 import authRoutes from './routes/authRoutes';
 
 const app = express();
 const server = http.createServer(app);
 
-initSocket(server);
+const allowedOrigins = [
+  'http://localhost:3000',
+  process.env.CLIENT_URL,
+];
+
+// The type is correctly defined here
+const corsOptions: CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+};
+
+initSocket(server, corsOptions);
 
 const PORT = process.env.PORT || 5001;
 
-// Connect to MongoDB - this is required.
 connectDB();
-
-// --- THE FIX: Only connect to Redis if a URL is provided ---
-// On Render, we will NOT provide this variable, so this code will not run.
 if (process.env.REDIS_URL) {
-    connectRedis().catch(err => {
-        console.error("Failed to connect to Redis:", err);
-    });
+    connectRedis().catch(err => console.error("Failed to connect to Redis:", err));
 } else {
-    console.warn("⚠️ REDIS_URL not found. Running without Redis. OTPs will be stored in memory.");
+    console.warn("⚠️ REDIS_URL not found. Running without Redis.");
 }
 
-app.use(cors({ origin: "https://typo-client.vercel.app" })); // Use your Vercel URL
+app.use(cors(corsOptions));
 app.use(express.json());
-
 app.use('/api/auth', authRoutes);
 
 server.listen(PORT, () => {
