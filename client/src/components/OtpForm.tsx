@@ -6,6 +6,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/services/api';
+import { AxiosError } from 'axios';
 
 interface OtpFormProps {
   email: string;
@@ -30,19 +31,23 @@ export default function OtpForm({ email, registrationId, onClose, onGoBack }: Ot
       const { token, username, userId, isGuest } = response.data; // <-- Get userId
       login(token, username, userId, isGuest); // <-- Pass userId to store
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'An unexpected error occurred.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    } catch (err) { // FIX: Type-safe error handling
+          if (err instanceof AxiosError) {
+            setError(err.response?.data?.message || 'An unexpected error occurred.');
+          } else {
+            setError('An unexpected error occurred.');
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      };
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold text-white">Verify Your Email</h2>
         <p className="text-gray-400 mt-2">
-          We've sent a 6-digit code to <span className="font-semibold text-yellow-400">{email}</span>.
+          We&apos;ve sent a 6-digit code to <span className="font-semibold text-yellow-400">{email}</span>.
         </p>
       </div>
       

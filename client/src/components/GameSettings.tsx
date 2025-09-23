@@ -1,9 +1,9 @@
+// client/src/components/GameSettings.tsx
 'use client';
 
 import { cn } from "@/lib/utils";
 import { Clock, Type } from "lucide-react";
 
-// Define the types for our settings
 export type GameMode = 'time' | 'words';
 export type GameSetting<T extends GameMode> = T extends 'time' ? 15 | 30 | 60 : 10 | 25 | 50;
 
@@ -18,10 +18,8 @@ const timeOptions: GameSetting<'time'>[] = [15, 30, 60];
 const wordOptions: GameSetting<'words'>[] = [10, 25, 50];
 
 export default function GameSettings({ gameMode, setGameMode, gameSetting, setGameSetting }: GameSettingsProps) {
-
   const handleModeChange = (mode: GameMode) => {
     setGameMode(mode);
-    // Set a default setting when the mode changes
     if (mode === 'time') {
       setGameSetting(30);
     } else {
@@ -33,7 +31,6 @@ export default function GameSettings({ gameMode, setGameMode, gameSetting, setGa
 
   return (
     <div className="bg-gray-900/50 p-2 rounded-lg flex items-center justify-center space-x-2 md:space-x-4">
-      {/* Mode Selectors */}
       <div className="flex items-center space-x-2">
         <button
           onClick={() => handleModeChange('time')}
@@ -50,15 +47,13 @@ export default function GameSettings({ gameMode, setGameMode, gameSetting, setGa
           <span>words</span>
         </button>
       </div>
-
       <div className="h-6 w-px bg-gray-700"></div>
-
-      {/* Setting Options */}
       <div className="flex items-center space-x-2">
         {options.map((option) => (
           <button
             key={option}
-            onClick={() => setGameSetting(option as any)}
+            // FIX: Removed the 'as any' cast
+            onClick={() => setGameSetting(option)}
             className={cn(
               "p-2 w-10 text-center rounded-md transition-colors",
               gameSetting === option ? "bg-yellow-400 text-black font-bold" : "text-gray-400 hover:text-white hover:bg-gray-800"

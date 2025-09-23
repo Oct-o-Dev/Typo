@@ -1,16 +1,17 @@
 // client/src/services/socket.ts
 import { io, Socket } from 'socket.io-client';
 
-let socket: Socket;
+// FIX: Allow the socket to be undefined
+let socket: Socket | undefined;
 
 const SERVER_URL = 'http://localhost:5001';
 
 export const connectSocket = (token: string) => {
-  if (socket) return; // Prevent multiple connections
+  if (socket) return socket;
 
   socket = io(SERVER_URL, {
     auth: {
-      token, // Send the JWT for authentication
+      token,
     },
   });
 
@@ -33,6 +34,7 @@ export const getSocket = () => {
 export const disconnectSocket = () => {
   if (socket) {
     socket.disconnect();
-    (socket as any) = null; // Clear the variable
+    // FIX: A type-safe way to clear the variable
+    socket = undefined;
   }
 };

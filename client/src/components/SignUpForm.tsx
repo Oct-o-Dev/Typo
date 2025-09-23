@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Button } from './Button';
 import { Input } from './Input';
 import api from '@/services/api';
+import { AxiosError } from 'axios';
 
 interface SignUpFormProps {
   onSwitchToLogin: () => void;
@@ -33,12 +34,16 @@ export default function SignUpForm({ onSwitchToLogin, onShowOtp }: SignUpFormPro
     try {
       const response = await api.post('/auth/start-registration', { email, password, username });
       onShowOtp(email, response.data.registrationId);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'An unexpected error occurred.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    } catch (err) { // FIX: Type-safe error handling
+          if (err instanceof AxiosError) {
+            setError(err.response?.data?.message || 'An unexpected error occurred.');
+          } else {
+            setError('An unexpected error occurred.');
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      };
 
   return (
     <div className="space-y-6">

@@ -5,18 +5,26 @@ import { useSocket } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/authStore';
 import ResultsModal from './ResultsModal';
 import { useRouter } from 'next/navigation';
-import { Howl } from 'howler'; // Import Howler for sound effects
+import { Howl } from 'howler';
 
-// --- NEW: Sound Effect Definitions ---
-const keySound = new Howl({
-  src: ['https://actions.google.com/sounds/v1/ui/key_press_standard.ogg']
-});
-const errorSound = new Howl({
-  src: ['https://actions.google.com/sounds/v1/ui/error_light.ogg'],
-  volume: 0.5
-});
+const keySound = new Howl({ src: ['/sounds/key-press.ogg'] });
+const errorSound = new Howl({ src: ['/sounds/error.ogg'], volume: 0.5 });
 
-// ... (Interfaces are correct and remain the same)
+// --- YOUR BRILLIANT SUGGESTION: A type-safe interface for our results ---
+export interface PlayerResult {
+  id: string;
+  username: string;
+  wpm: number;
+  accuracy: number;
+  finalScore: number;
+  oldRating: number;
+  newRating: number;
+}
+export interface MatchResult {
+  winnerId: string | null;
+  players: PlayerResult[];
+}
+
 interface Opponent { id: string; username: string; rating: number; }
 interface GameMode { mode: 'time' | 'words'; duration: number; }
 interface GameClientProps { matchId: string; initialText: string; initialOpponent: Opponent; gameMode: GameMode; }
@@ -36,37 +44,25 @@ export default function GameClient({ matchId, initialText, initialOpponent, game
   
   const [remainingTime, setRemainingTime] = useState(gameMode.duration);
   const [isFinished, setIsFinished] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState<MatchResult | null>(null); // Use our new interface
 
   const startTime = useRef<number | null>(null);
   const [wpm, setWpm] = useState(0);
-
-  // --- NEW: State for visual error feedback ---
   const [isError, setIsError] = useState(false);
 
-  // --- THE DEFINITIVE FIX: Calculate final stats inside this function ---
-  const finishGame = useCallback(() => {
+  const finishGame = useCallback((finalInput = userInput) => {
     if (isFinished || !socket) return;
     setIsFinished(true);
-
-    // Ensure we don't divide by zero if the user didn't type anything
-    if (!startTime.current || userInput.length === 0) {
+    if (!startTime.current || finalInput.length === 0) {
         socket.emit('playerFinished', { matchId, wpm: 0, accuracy: 0 });
         return;
     }
-    
-    // Calculate final WPM at the moment the game ends
-    const finalElapsedTimeInMinutes = (Date.now() - startTime.current) / 60000;
-    const finalWordsTyped = userInput.length / 5;
-    const finalWpm = Math.round(finalWordsTyped / finalElapsedTimeInMinutes);
-
-    // Calculate final accuracy
-    const correctChars = textToType.split('').reduce((acc, char, i) => acc + (userInput[i] === char ? 1 : 0), 0);
-    const accuracy = Math.round((correctChars / userInput.length) * 100) || 0;
-    
-    console.log(`Submitting final score! WPM: ${finalWpm}, Accuracy: ${accuracy}%`);
+    const finalElapsedTime = (Date.now() - startTime.current) / 60000;
+    const finalWpm = Math.round((finalInput.length / 5) / finalElapsedTime);
+    const correctChars = textToType.split('').reduce((acc, char, i) => acc + (finalInput[i] === char ? 1 : 0), 0);
+    const accuracy = Math.round((correctChars / finalInput.length) * 100) || 0;
     socket.emit('playerFinished', { matchId, wpm: finalWpm, accuracy });
-  }, [isFinished, socket, matchId, textToType, userInput]); // Removed wpm from dependencies
+  }, [isFinished, socket, matchId, textToType, userInput]);
 
   useEffect(() => {
     if (isLoggedIn) setIsStoreHydrated(true);
@@ -74,53 +70,35 @@ export default function GameClient({ matchId, initialText, initialOpponent, game
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (gameState !== 'running' || isFinished) return;
-    
-    // --- UPDATED to handle finishing a "words" match ---
-    // We check if the NEXT character they type will finish the text
-    if (userInput.length === textToType.length - 2 && e.key.length === 1) {
+    if (e.key.length === 1 && userInput.length === textToType.length - 1) {
         if (gameMode.mode === 'words') {
-            // A tiny delay ensures the last character is registered before finishing
-            setTimeout(() => finishGame(), 50);
+            setTimeout(() => finishGame(userInput + e.key), 50);
         }
     }
-    
     if (userInput.length >= textToType.length) return;
-    
     if (e.key.length === 1 || e.key === 'Backspace') e.preventDefault();
-    
     if (!startTime.current && e.key.length === 1) {
       startTime.current = Date.now();
       if (socket) socket.emit('playerStartedTyping', matchId);
     }
-
     if (e.key.length === 1) {
-      const typedChar = e.key;
       const expectedChar = textToType[userInput.length];
-      if (typedChar === expectedChar) {
-        keySound.play();
-        setIsError(false);
-      } else {
-        errorSound.play();
-        setIsError(true);
-        setTimeout(() => setIsError(false), 200);
-      }
-      setUserInput((prev) => prev + typedChar);
+      if (e.key === expectedChar) keySound.play(); else errorSound.play();
+      setIsError(e.key !== expectedChar);
+      if (e.key !== expectedChar) setTimeout(() => setIsError(false), 200);
+      setUserInput((prev) => prev + e.key);
     } else if (e.key === 'Backspace') {
       setIsError(false);
       setUserInput((prev) => prev.slice(0, -1));
     }
   }, [userInput, textToType, gameState, isFinished, socket, matchId, finishGame, gameMode.mode]);
 
-  
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-
-  // Main WebSocket listener setup
   useEffect(() => {
-    // ... (This is now perfect and remains the same)
     if (socket && isStoreHydrated) {
       socket.emit('joinMatchRoom', matchId);
       const handlePreGameCountdown = (data: { countdown: number }) => { setGameState('countdown'); setCountdown(data.countdown); };
@@ -128,11 +106,8 @@ export default function GameClient({ matchId, initialText, initialOpponent, game
       const handleMatchAborted = (data: { message: string }) => { alert(data.message); router.push('/'); };
       const handleOpponentProgress = (data: { playerId: string, progress: number }) => { if (userId && data.playerId !== userId) setOpponentProgress(data.progress); };
       const handleTimerUpdate = (data: { remainingTime: number }) => setRemainingTime(data.remainingTime);
-      const handleGameOver = () => {
-        finishGame();
-        setTimeout(() => { if (socket) socket.emit('requestResults', matchId); }, 1000);
-      };
-      const handleMatchResult = (data: any) => setResults(data);
+      const handleGameOver = () => finishGame();
+      const handleMatchResult = (data: MatchResult) => setResults(data);
 
       socket.on('preGameCountdown', handlePreGameCountdown);
       socket.on('gameStart', handleGameStart);
@@ -142,28 +117,29 @@ export default function GameClient({ matchId, initialText, initialOpponent, game
       socket.on('gameOver', handleGameOver);
       socket.on('matchResult', handleMatchResult);
 
+      // This is the trigger for when the game ends in ANY mode
+      // It asks the server to calculate and return the final results
+      if(isFinished) {
+        setTimeout(() => { if (socket) socket.emit('requestResults', matchId); }, 1000);
+      }
+
       return () => {
-        socket.off('preGameCountdown', handlePreGameCountdown);
-        socket.off('gameStart', handleGameStart);
-        socket.off('matchAborted', handleMatchAborted);
-        socket.off('opponentProgress', handleOpponentProgress);
-        socket.off('timerUpdate', handleTimerUpdate);
-        socket.off('gameOver', handleGameOver);
-        socket.off('matchResult', handleMatchResult);
+        socket.off('preGameCountdown');
+        socket.off('gameStart');
+        socket.off('matchAborted');
+        socket.off('opponentProgress');
+        socket.off('timerUpdate');
+        socket.off('gameOver');
+        socket.off('matchResult');
       };
     }
-  }, [socket, matchId, userId, isStoreHydrated, finishGame, router]);
+  }, [socket, matchId, userId, isStoreHydrated, finishGame, router, isFinished]);
 
-  // Effect for emitting progress and calculating LIVE WPM for display
   useEffect(() => {
-    // ... (This is now perfect and remains the same)
-    if (socket && isStoreHydrated && !isFinished) {
+    if (socket && isStoreHydrated && !isFinished && startTime.current) {
       socket.emit('playerProgress', { matchId, progress: userInput.length });
-      if (startTime.current) {
-        const elapsedTimeInMinutes = (Date.now() - startTime.current) / 60000;
-        const wordsTyped = userInput.length / 5;
-        setWpm(elapsedTimeInMinutes > 0 ? Math.round(wordsTyped / elapsedTimeInMinutes) : 0);
-      }
+      const elapsedTime = (Date.now() - startTime.current) / 60000;
+      setWpm(elapsedTime > 0 ? Math.round((userInput.length / 5) / elapsedTime) : 0);
     }
   }, [socket, userInput, matchId, isStoreHydrated, isFinished]);
 

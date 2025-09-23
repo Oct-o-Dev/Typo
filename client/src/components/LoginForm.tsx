@@ -1,11 +1,12 @@
 // ...existing code...
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
 import { Button } from './Button';
 import { Input } from './Input';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/services/api';
+import { AxiosError } from 'axios';
 
 interface LoginFormProps {
   onSwitchToSignUp: () => void;
@@ -19,7 +20,7 @@ export default function LoginForm({ onSwitchToSignUp, onClose }: LoginFormProps)
   const [isLoading, setIsLoading] = useState(false);
   const login = useAuthStore((state) => state.login);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
@@ -29,8 +30,12 @@ export default function LoginForm({ onSwitchToSignUp, onClose }: LoginFormProps)
       const { token, username, userId, isGuest } = response.data; // <-- Get userId
       login(token, username, userId, isGuest); // <-- Pass userId to store
       onClose();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'An unexpected error occurred.');
+    } catch (err) { // FIX: Type-safe error handling
+      if (err instanceof AxiosError) {
+        setError(err.response?.data?.message || 'An unexpected error occurred.');
+      } else {
+        setError('An unexpected error occurred.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -45,12 +50,16 @@ export default function LoginForm({ onSwitchToSignUp, onClose }: LoginFormProps)
         const { token, username, userId, isGuest } = response.data;
         login(token, username, userId, isGuest);
         onClose();
-    } catch (err: any) {
-        setError(err?.response?.data?.message || 'Failed to create guest session.');
+    } catch (err) { // FIX: Type-safe error handling
+      if (err instanceof AxiosError) {
+        setError(err.response?.data?.message || 'An unexpected error occurred.');
+      } else {
+        setError('An unexpected error occurred.');
+      }
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -92,7 +101,7 @@ export default function LoginForm({ onSwitchToSignUp, onClose }: LoginFormProps)
       
       <div className="text-center">
         <p className="text-gray-400">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <button onClick={onSwitchToSignUp} className="font-semibold text-yellow-400 hover:underline">
             Sign Up
           </button>
