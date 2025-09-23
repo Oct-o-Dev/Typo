@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "test:bcrypt": "node ../node_modules/ts-node/dist/bin.js src/test-bcrypt.ts"
+    "build": "tsc",
+    "start": "node dist/index.js", 
+    "test:bcrypt": "ts-node src/test-bcrypt.ts"
   },
   "keywords": [],
   "author": "",
