@@ -23,7 +23,7 @@ interface GameClientProps {
 export default function GameClient({ matchId, initialText, initialOpponent, gameMode, isSoloMode = false }: GameClientProps) {
   const router = useRouter();
   const { socket } = useSocket();
-  const { username, userId, isLoggedIn } = useAuthStore();
+  const { username, userId } = useAuthStore();
   
   const [textToType] = useState<string>(initialText + '\u00A0'); 
   const [userInput, setUserInput] = useState('');
@@ -199,7 +199,6 @@ export default function GameClient({ matchId, initialText, initialOpponent, game
     });
   };
   
-  const myProgress = (userInput.length / textToType.length) * 100;
   const opponentProgressBar = (opponentProgress / textToType.length) * 100;
 
   return (
