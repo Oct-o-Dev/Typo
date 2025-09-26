@@ -86,10 +86,16 @@ export default function HomePage() {
 
         <div className="flex flex-wrap justify-center gap-4">
           {isLoggedIn ? (
+            <>
             <Button onClick={handleFindMatch} size="lg" disabled={matchmakingStatus === 'searching'}>
               {matchmakingStatus === 'searching' ? 'Searching...' : 'Find a Match'}
               <ArrowRight size={20} className="ml-2" />
             </Button>
+            <Button onClick={() => router.push('/practice')} size="lg" variant="secondary">
+                  <Bot size={20} className="mr-2" />
+                  Practice vs Bot
+            </Button>
+            </>
           ) : (
             <p className="text-yellow-400">Please Sign In or Sign Up to play!</p>
           )}
